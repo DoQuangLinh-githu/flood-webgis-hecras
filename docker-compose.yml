@@ -1,0 +1,45 @@
+# docker-compose.yml (backend only)
+
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: flood-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - flood-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: flood-db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-flood_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-flood_password}
+      - POSTGRES_DB=${POSTGRES_DB:-flood_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - flood-network
+
+networks:
+  flood-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

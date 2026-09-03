@@ -1,0 +1,303 @@
+# ============================================
+# PYTHON
+# ============================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+*.log
+
+# ============================================
+# ENVIRONMENT
+# ============================================
+
+.env
+.env.local
+.env.*.local
+*.env
+
+# ============================================
+# IDE
+# ============================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ============================================
+# DATABASE
+# ============================================
+
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ============================================
+# HEC-RAS
+# ============================================
+
+*.prj
+*.p01
+*.p02
+*.p03
+*.p04
+*.p05
+*.p06
+*.p07
+*.g01
+*.g02
+*.g03
+*.g04
+*.g05
+*.f01
+*.f02
+*.u01
+*.u02
+*.u03
+*.o01
+*.o02
+*.out
+*.hdf
+*.dss
+*.tmp
+*.bak
+*.temp
+*.rst
+*.blf
+*.hyd
+*.bco
+*.b01
+*.b02
+*.ic.o*
+*.x01
+*.x02
+*.x03
+
+# ============================================
+# GIS / RASTER
+# ============================================
+
+*.tif
+*.tiff
+*.geotiff
+*.cog
+*.vrt
+*.aux.xml
+*.ovr
+*.gwf
+*.tfw
+*.prj
+*.shp
+*.shx
+*.dbf
+*.sbn
+*.sbx
+*.fbn
+*.fbx
+*.ain
+*.aih
+*.ixs
+*.mxs
+*.atx
+*.cpg
+*.qix
+
+# ============================================
+# STORAGE / UPLOADS
+# ============================================
+
+uploads/
+storage/
+temp/
+tmp/
+*.tmp
+*.temp
+*.cache
+jobs/
+working_dir/
+results/
+
+# ============================================
+# FRONTEND
+# ============================================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+*.local
+
+# ============================================
+# BACKEND
+# ============================================
+
+alembic/versions/*.py
+!alembic/versions/__init__.py
+instance/
+webapp.db
+*.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+
+# ============================================
+# AGENT
+# ============================================
+
+agent/working_dir/
+agent/jobs/
+agent/logs/
+agent/*.pid
+agent/hecras_temp/
+agent/model_template_backup/
+
+# ============================================
+# TESTING
+# ============================================
+
+*.test
+*.spec
+test_output/
+.pytest_cache/
+
+# ============================================
+# LOGS
+# ============================================
+
+logs/
+*.log
+*.out
+
+# ============================================
+# COVERAGE
+# ============================================
+
+coverage/
+.coveralls.yml
+*.coveragerc
+
+# ============================================
+# JUPYTER
+# ============================================
+
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================
+# GIT
+# ============================================
+
+*.orig
+*.rej
+*.patch
+*.diff
+
+# ============================================
+# BACKUP
+# ============================================
+
+*.backup
+*.bak
+*.old
+*.orig
+
+# ============================================
+# CERTIFICATES
+# ============================================
+
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ============================================
+# OS
+# ============================================
+
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================
+# GIS PROCESSING
+# ============================================
+
+gis-processing/temp/
+gis-processing/output/
+gis-processing/*_processed.*
+
+# ============================================
+# DATABASE SCHEMA
+# ============================================
+
+database/*.sqlite
+database/*.db
+database/data/
+
+# ============================================
+# DOCKER
+# ============================================
+
+*.dockerignore
+Dockerfile.*
+*.tar
+*.tar.gz
+
+# ============================================
+# MISC
+# ============================================
+
+*.key
+*.pem
+*.crt
+*.csr
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+*.pub
+*.priv
+*.secret
+*.token
+*.api_key
+*.password
