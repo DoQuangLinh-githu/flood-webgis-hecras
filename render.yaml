@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: flood-webgis-backend
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    rootDir: backend
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: HECRAS_API_URL
+        value: https://hecras-agent.idsea.net
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: SECRET_KEY
+        generateValue: true
