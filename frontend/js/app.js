@@ -103,10 +103,4 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('📡 API:', API_BASE_URL);
     console.log('🗺️ Map initialized');
 
-    // Auto-fill demo data
-    if (!document.getElementById('scenarioName').value) {
-        document.getElementById('scenarioName').value = 'Mưa 5mm 5h';
-        document.getElementById('rainfall').value = 5;
-        document.getElementById('duration').value = 5;
-    }
 });
