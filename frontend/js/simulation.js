@@ -64,10 +64,17 @@ class SimulationManager {
         document.getElementById('jobScenarioDisplay').textContent =
             job.scenario_name || '-';
 
-        const params = job.parameters || {};
-        const paramsText =
-            `${params.rainfall || 0} ${params.rainfall_unit || 'mm'} / ` +
-            `${params.duration || 0} ${params.duration_unit || 'hour'}`;
+        // Job.parameters có thể là object lồng nhau
+        let params = job.parameters || {};
+        if (params.parameters) {
+            // Backend trả về { parameters: { rainfall, duration, ... } }
+            params = params.parameters;
+        }
+        const rainfall = params.rainfall ?? 0;
+        const rainfallUnit = params.rainfall_unit || 'mm';
+        const duration = params.duration ?? 0;
+        const durationUnit = params.duration_unit || 'hour';
+        const paramsText = `${rainfall} ${rainfallUnit} / ${duration} ${durationUnit}`;
         document.getElementById('jobParamsDisplay').textContent = paramsText;
 
         if (job.created_at) {
