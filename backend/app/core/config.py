@@ -1,62 +1,82 @@
 # backend/app/core/config.py
 
 import os
-from typing import List, Union
+from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
 
 class Settings(BaseSettings):
-    # Application
+    # --------------------------------------------------------
+    # APPLICATION
+    # --------------------------------------------------------
     APP_NAME: str = "Flood WebGIS HEC-RAS"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
 
+    # --------------------------------------------------------
     # API
+    # --------------------------------------------------------
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
     API_PREFIX: str = "/api/v1"
 
-    # CORS
-    CORS_ORIGINS: List[str] = ["*"]
+    # --------------------------------------------------------
+    # CORS — dùng str để tránh Pydantic parse JSON
+    # --------------------------------------------------------
+    CORS_ORIGINS: str = "*"
     CORS_ALLOW_CREDENTIALS: bool = True
-    CORS_ALLOW_METHODS: List[str] = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
-    CORS_ALLOW_HEADERS: List[str] = ["Authorization", "Content-Type", "Accept", "X-Requested-With"]
+    CORS_ALLOW_METHODS: str = "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+    CORS_ALLOW_HEADERS: str = "Authorization,Content-Type,Accept,X-Requested-With"
 
-    # Database
-    DATABASE_URL: str
-    DATABASE_POOL_SIZE: int = 20
-    DATABASE_MAX_OVERFLOW: int = 40
+    # --------------------------------------------------------
+    # DATABASE
+    # --------------------------------------------------------
+    DATABASE_URL: str = "sqlite:///./test.db"
+    DATABASE_POOL_SIZE: int = 10
+    DATABASE_MAX_OVERFLOW: int = 20
 
-    # Security
+    # --------------------------------------------------------
+    # SECURITY
+    # --------------------------------------------------------
     SECRET_KEY: str = "change-me-in-production"
 
-    # Mock Mode
-    MOCK_MODE: bool = False
+    # --------------------------------------------------------
+    # HEC-RAS INTEGRATION
+    # --------------------------------------------------------
+    HECRAS_API_URL: str = "http://localhost:8000"
 
-    # HEC-RAS Integration
-    HECRAS_API_URL: str = os.getenv("HECRAS_API_URL", "http://localhost:8000")
-    HECRAS_MOCK_MODE: bool = os.getenv("HECRAS_MOCK_MODE", "True").lower() == "true"
-
-    # Simulation defaults
+    # --------------------------------------------------------
+    # SIMULATION DEFAULTS
+    # --------------------------------------------------------
     DEFAULT_RAINFALL_UNIT: str = "mm"
     DEFAULT_DURATION_UNIT: str = "hour"
     MAX_SIMULATION_DURATION: int = 72
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    # --------------------------------------------------------
+    # HELPERS — convert str -> list
+    # --------------------------------------------------------
+    @property
+    def cors_origins_list(self) -> List[str]:
+        if self.CORS_ORIGINS.strip() == "*":
+            return ["*"]
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @property
+    def cors_methods_list(self) -> List[str]:
+        return [m.strip() for m in self.CORS_ALLOW_METHODS.split(",") if m.strip()]
+
+    @property
+    def cors_headers_list(self) -> List[str]:
+        return [h.strip() for h in self.CORS_ALLOW_HEADERS.split(",") if h.strip()]
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
     )
 
 

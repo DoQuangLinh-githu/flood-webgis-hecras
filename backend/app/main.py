@@ -2,7 +2,9 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from app.api.routes import simulations, health
 from app.core.config import settings
@@ -15,53 +17,69 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting Flood WebGIS HEC-RAS Backend...")
     print(f"Environment: {settings.ENVIRONMENT}")
-    print(f"Database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else 'Neon'}")
+    print(f"HEC-RAS API URL: {settings.HECRAS_API_URL}")
+
+    # Create tables (in dev mode)
+    if settings.ENVIRONMENT == "development":
+        try:
+            Base.metadata.create_all(bind=engine)
+            print("Database tables ensured")
+        except Exception as e:
+            print(f"Warning: could not create tables: {e}")
+
     yield
+
     # Shutdown
     print("Shutting down...")
 
-# Create FastAPI app
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Flood WebGIS HEC-RAS Simulation API",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
-    allow_methods=settings.CORS_ALLOW_METHODS,
-    allow_headers=settings.CORS_ALLOW_HEADERS,
+    allow_methods=settings.cors_methods_list,
+    allow_headers=settings.cors_headers_list,
 )
 
 # Include routers
 app.include_router(simulations.router, prefix="/api", tags=["simulations"])
 app.include_router(health.router, prefix="/api", tags=["health"])
 
-# Import và include jobs router (nếu file tồn tại)
-try:
-    from app.api.routes import jobs
-    app.include_router(jobs.router, prefix="/api", tags=["jobs"])
-    print("✅ Jobs router loaded")
-except ImportError:
-    print("⚠️ Jobs router not found - skipping")
 
-# Import và include agents router (nếu file tồn tại)
-try:
-    from app.api.routes import agents
-    app.include_router(agents.router, prefix="/api", tags=["agents"])
-    print("✅ Agents router loaded")
-except ImportError:
-    print("⚠️ Agents router not found - skipping")
+# ============================================================
+# SERVE FRONTEND (nếu muốn gộp chung 1 service)
+# ============================================================
 
-@app.get("/")
-async def root():
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
+
+if FRONTEND_DIR.exists():
+    # Serve static files (css, js)
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(FRONTEND_DIR)),
+        name="static",
+    )
+
+    from fastapi.responses import FileResponse
+
+    @app.get("/")
+    async def serve_frontend():
+        return FileResponse(str(FRONTEND_DIR / "index.html"))
+
+
+@app.get("/api")
+async def api_root():
     return {
         "message": "Flood WebGIS HEC-RAS API",
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
-        "docs": "/docs"
+        "docs": "/docs",
     }

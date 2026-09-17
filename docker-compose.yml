@@ -1,4 +1,5 @@
-# docker-compose.yml (backend only)
+# docker-compose.yml — local dev only
+# Production dùng Render + Neon + Cloudflare Tunnel
 
 version: '3.8'
 
@@ -10,20 +11,16 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - HECRAS_API_URL=${HECRAS_API_URL:-http://host.docker.internal:8000}
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - DEBUG=${DEBUG:-true}
-      - SECRET_KEY=${SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY:-changeme}
     volumes:
       - ./backend:/app
-      - ./backend/logs:/app/logs
-    depends_on:
-      - db
     restart: unless-stopped
-    networks:
-      - flood-network
 
   db:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.3
     container_name: flood-db
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-flood_user}
@@ -34,12 +31,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - flood-network
-
-networks:
-  flood-network:
-    driver: bridge
 
 volumes:
   postgres_data:

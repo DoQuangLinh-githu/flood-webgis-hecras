@@ -301,3 +301,29 @@ Dockerfile.*
 *.token
 *.api_key
 *.password
+
+# === Additional ignores (17/09/2026) ===
+# Backups
+*.backup_*
+*.backup
+backup/
+snapshots/
+
+# Data files
+*.db
+*.sqlite
+*.sqlite3
+test.db
+
+# Logs
+logs/
+*.log
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp

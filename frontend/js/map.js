@@ -3,231 +3,179 @@
 class FloodMap {
     constructor(mapId) {
         this.map = L.map(mapId, {
-            center: [10.8231, 106.6297], // TP.HCM
-            zoom: 12,
+            center: [10.78, 106.70], // TP.HCM
+            zoom: 11,
             zoomControl: false,
         });
 
-        // Base Layer
-        this.baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors',
-        }).addTo(this.map);
+        // Base layer — Esri World Imagery (vệ tinh, không API key)
+        this.baseLayer = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            {
+                maxZoom: 19,
+                attribution: '© Esri, Maxar, Earthstar Geographics',
+            }
+        ).addTo(this.map);
 
-        // Layer Groups
+        // Labels overlay (tên đường, địa danh)
+        this.labelsLayer = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            {
+                maxZoom: 19,
+                opacity: 0.8,
+            }
+        ).addTo(this.map);
+
+        // Layer groups
         this.layers = {
-            rivers: L.layerGroup().addTo(this.map),
-            boundaries: L.layerGroup().addTo(this.map),
             flood: L.layerGroup().addTo(this.map),
         };
 
-        // Sample data
-        this.addSampleData();
-
-        // Map events
-        this.map.on('moveend', () => this.updateBounds());
+        this.legend = document.getElementById('mapLegend');
+        this.floodBounds = null;
     }
 
-    addSampleData() {
-        // Sample rivers (using VN-2000 approximate coordinates for Saigon River)
-        const saigonRiver = L.polyline(
-            [
-                [10.95, 106.65],
-                [10.85, 106.70],
-                [10.75, 106.75],
-                [10.65, 106.75],
-                [10.55, 106.72],
-            ],
-            {
-                color: '#2196f3',
-                weight: 3,
-                opacity: 0.8,
-                smoothFactor: 1,
-            }
-        ).addTo(this.layers.rivers);
+    // ============================================================
+    // FLOOD LAYER
+    // ============================================================
 
-        const saigonRiver2 = L.polyline(
-            [
-                [10.82, 106.60],
-                [10.78, 106.65],
-                [10.72, 106.68],
-                [10.65, 106.70],
-            ],
-            {
-                color: '#2196f3',
-                weight: 2,
-                opacity: 0.6,
-                smoothFactor: 1,
-            }
-        ).addTo(this.layers.rivers);
-
-        // Sample boundaries (simplified districts)
-        const districts = [
-            [
-                [10.90, 106.60],
-                [10.90, 106.75],
-                [10.80, 106.75],
-                [10.80, 106.60],
-                [10.90, 106.60],
-            ],
-            [
-                [10.80, 106.60],
-                [10.80, 106.75],
-                [10.70, 106.75],
-                [10.70, 106.60],
-                [10.80, 106.60],
-            ],
-            [
-                [10.70, 106.65],
-                [10.70, 106.78],
-                [10.60, 106.78],
-                [10.60, 106.65],
-                [10.70, 106.65],
-            ],
-        ];
-
-        districts.forEach((coords, index) => {
-            const color = ['#ff9800', '#4caf50', '#9c27b0'][index % 3];
-            L.polygon(coords, {
-                color: color,
-                weight: 2,
-                opacity: 0.6,
-                fillOpacity: 0.1,
-                fillColor: color,
-            })
-                .addTo(this.layers.boundaries)
-                .bindPopup(`<b>Khu vực ${index + 1}</b>`);
-        });
-    }
-
-    addFloodLayer(data) {
-        // Clear existing flood layer
+    addFloodLayerFromGeojson(geojson) {
         this.layers.flood.clearLayers();
 
-        if (!data) {
-            this.showToast('Không có dữ liệu ngập lụt', 'warning');
+        if (!geojson || !geojson.features || geojson.features.length === 0) {
+            window.showToast('Không có dữ liệu ngập', 'warning');
             return;
         }
 
-        // Sample flood data (simulated)
-        const floodData = [
-            { lat: 10.82, lng: 106.68, depth: 1.2 },
-            { lat: 10.80, lng: 106.70, depth: 0.8 },
-            { lat: 10.78, lng: 106.72, depth: 0.5 },
-            { lat: 10.76, lng: 106.70, depth: 0.3 },
-            { lat: 10.74, lng: 106.68, depth: 0.7 },
-            { lat: 10.72, lng: 106.70, depth: 1.5 },
-            { lat: 10.70, lng: 106.72, depth: 0.4 },
-            { lat: 10.68, lng: 106.70, depth: 0.6 },
-        ];
+        const features = geojson.features;
 
-        const getColor = (depth) => {
-            if (depth <= 0.3) return '#ffffb2';
-            if (depth <= 0.5) return '#fecc5c';
-            if (depth <= 1.0) return '#fd8d3c';
-            if (depth <= 2.0) return '#f03b20';
+        // Màu theo độ sâu (m)
+        const getColor = (d) => {
+            if (d === null || d === undefined) return '#bdbdbd';
+            if (d < 0.01) return null;            // khô -> bỏ
+            if (d < 0.25) return '#ffffb2';
+            if (d < 0.5)  return '#fecc5c';
+            if (d < 1.0)  return '#fd8d3c';
+            if (d < 1.5)  return '#f03b20';
             return '#bd0026';
         };
 
-        const getRadius = (depth) => {
-            return 50 + depth * 100;
-        };
+        const bounds = L.latLngBounds();
+        let nWet = 0;
+        let maxDepth = 0;
 
-        floodData.forEach((point) => {
-            const circle = L.circle([point.lat, point.lng], {
-                radius: getRadius(point.depth),
-                color: getColor(point.depth),
-                weight: 1,
-                opacity: 0.8,
-                fillColor: getColor(point.depth),
-                fillOpacity: 0.6,
-            })
-                .addTo(this.layers.flood)
-                .bindPopup(`
-                    <b>Độ sâu ngập:</b> ${point.depth.toFixed(1)} m<br>
-                    <b>Vị trí:</b> ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}
-                `);
+        features.forEach((feat) => {
+            const coords = feat.geometry?.coordinates;
+            if (!coords || coords.length < 2) return;
+
+            const [lon, lat] = coords;
+            const p = feat.properties || {};
+            const depth = p.max_depth_m;
+
+            if (depth !== null && depth !== undefined && depth > maxDepth) {
+                maxDepth = depth;
+            }
+
+            const color = getColor(depth);
+            if (!color) return;
+
+            nWet++;
+
+            const marker = L.circleMarker([lat, lon], {
+                radius: 5,
+                fillColor: color,
+                color: '#333',
+                weight: 0.5,
+                fillOpacity: 0.8,
+            });
+
+            marker.bindPopup(`
+                <b>Cell #${p.cell_id}</b><br>
+                Độ sâu: <b>${depth !== null ? depth.toFixed(3) : '—'} m</b><br>
+                Cao độ đáy: ${p.bottom_elev_m !== null ? p.bottom_elev_m.toFixed(2) : '—'} m<br>
+                Mực nước max: ${p.max_wse_m !== null ? p.max_wse_m.toFixed(2) : '—'} m<br>
+                Thời điểm max: ${p.t_peak_days !== null ? p.t_peak_days.toFixed(1) : '—'} ngày
+            `);
+
+            marker.addTo(this.layers.flood);
+            bounds.extend([lat, lon]);
         });
 
-        // Fit map to flood data
-        const bounds = floodData.map((p) => [p.lat, p.lng]);
-        if (bounds.length > 0) {
+        if (nWet > 0) {
             this.map.fitBounds(bounds, { padding: [50, 50] });
         }
 
-        this.showToast('Đã hiển thị dữ liệu ngập lụt', 'success');
+        // Cập nhật legend info (nếu có)
+        console.log(`[map] ${nWet} cells ngập, max depth = ${maxDepth.toFixed(2)} m`);
+
+        window.showToast(
+            `Hiển thị ${nWet} cells ngập (max ${maxDepth.toFixed(2)} m)`,
+            'success'
+        );
     }
+
+    // ============================================================
+    // CLEAR
+    // ============================================================
 
     clearFloodLayer() {
         this.layers.flood.clearLayers();
-        this.showToast('Đã xóa lớp ngập lụt', 'info');
+        window.showToast('Đã xóa lớp ngập lụt', 'info');
     }
 
-    zoomIn() {
-        this.map.zoomIn();
-    }
+    // ============================================================
+    // CONTROLS
+    // ============================================================
 
-    zoomOut() {
-        this.map.zoomOut();
-    }
+    zoomIn() { this.map.zoomIn(); }
+    zoomOut() { this.map.zoomOut(); }
 
     locateUser() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    this.map.setView([latitude, longitude], 15);
-                    L.marker([latitude, longitude], {
-                        icon: L.divIcon({
-                            html: '<i class="fas fa-user" style="font-size:20px;color:#1976d2;"></i>',
-                            className: 'location-marker',
-                            iconSize: [30, 30],
-                            iconAnchor: [15, 15],
-                        }),
-                    })
-                        .addTo(this.map)
-                        .bindPopup('Vị trí của bạn');
-                },
-                () => {
-                    this.showToast('Không thể xác định vị trí', 'error');
-                }
-            );
-        } else {
-            this.showToast('Trình duyệt không hỗ trợ định vị', 'warning');
+        if (!navigator.geolocation) {
+            window.showToast('Trình duyệt không hỗ trợ định vị', 'warning');
+            return;
         }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+                this.map.setView([latitude, longitude], 15);
+                L.marker([latitude, longitude]).addTo(this.map).bindPopup('Vị trí của bạn');
+            },
+            () => window.showToast('Không thể xác định vị trí', 'error')
+        );
     }
 
-    updateBounds() {
-        const bounds = this.map.getBounds();
-        // Can be used to load data for visible area
-    }
+    setBaseMap(type) {
+        // type: 'satellite' | 'street' | 'topo'
+        this.map.removeLayer(this.baseLayer);
 
-    showToast(message, type = 'info') {
-        // Delegate to global toast function
-        if (window.showToast) {
-            window.showToast(message, type);
-        }
+        const urls = {
+            satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            street: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+            topo: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+        };
+
+        this.baseLayer = L.tileLayer(urls[type] || urls.satellite, {
+            maxZoom: 19,
+            attribution: '© Esri',
+        }).addTo(this.map);
     }
 }
 
-// Initialize map when DOM is ready
+
+// ============================================================
+// INIT
+// ============================================================
+
 let floodMap = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     floodMap = new FloodMap('map');
+    window.floodMap = floodMap;
 
-    // Map control buttons
-    document.getElementById('zoomInBtn')?.addEventListener('click', () => {
-        floodMap.zoomIn();
-    });
-
-    document.getElementById('zoomOutBtn')?.addEventListener('click', () => {
-        floodMap.zoomOut();
-    });
-
-    document.getElementById('locateBtn')?.addEventListener('click', () => {
-        floodMap.locateUser();
-    });
+    document.getElementById('zoomInBtn')?.addEventListener('click', () => floodMap.zoomIn());
+    document.getElementById('zoomOutBtn')?.addEventListener('click', () => floodMap.zoomOut());
+    document.getElementById('locateBtn')?.addEventListener('click', () => floodMap.locateUser());
 
     document.getElementById('toggleSidebarBtn')?.addEventListener('click', () => {
         const sidebar = document.getElementById('sidebar');
